@@ -1,4 +1,4 @@
-package pmax
+package powermax
 
 import (
 	"bytes"
@@ -17,22 +17,40 @@ import (
 // PowerMax PowerMax array object
 type PowerMax struct {
 	server   string
+	port     string
 	username string
 	password string
-	token    string
+	symmid   string
 	client   http.Client
 }
 
+// Add common headers
+func populateCommonHeaders(req *http.Request) {
+	type httpHeader struct {
+		header string
+		value  string
+	}
+
+	headers := []httpHeader{
+		{"Accept", "application/json"},
+		{"Content-Type", "application/json"},
+		{"X-EMC-REST-CLIENT", "true"},
+	}
+	for _, header := range headers {
+		req.Header.Set(header.header, header.value)
+	}
+}
+
 // New Init PowerMax Object
-func New(server string, username string, password string) (*PowerMax, error) {
+func New(server string, port string, username string, password string, symmid string) (*PowerMax, error) {
 	if utils.Logger == nil {
 		utils.InitLogger("", "")
 	}
 
 	var err error
-	utils.Log("debug", fmt.Sprintf("server: %s, username: %s, password: %s", server, username, password))
-	if server == "" || username == "" || password == "" {
-		return nil, errors.New("PowerMax server address, username, and password must be specified")
+	utils.Log("debug", fmt.Sprintf("server: %s, username: %s, password: %s, port: %s, symmid: %s", server, username, password, port, symmid))
+	if server == "" || username == "" || password == "" || symmid == "" {
+		return nil, errors.New("PowerMax server address, username, password and symmid must be specified")
 	}
 
 	cookieJar, _ := cookiejar.New(nil)
@@ -41,12 +59,13 @@ func New(server string, username string, password string) (*PowerMax, error) {
 	}
 	client := http.Client{Transport: tr, Jar: cookieJar}
 
-	req, err := http.NewRequest("GET", utils.URL("https", server, "/api/types/loginSessionInfo/instances"), nil)
+	// Check if the provided parameters are correct
+	req, err := http.NewRequest("GET", utils.URL("https", server, port, "/univmax/restapi/system/symmetrix", "/"+symmid), nil)
 	req.SetBasicAuth(username, password)
-	req.Header.Set("X-EMC-REST-CLIENT", "true")
+	populateCommonHeaders(req)
 
 	reqDetails, _ := httputil.DumpRequest(req, true)
-	utils.Log("debug", fmt.Sprintf("Login Request: %s", string(reqDetails)))
+	utils.Log("debug", fmt.Sprintf("Query Symmtric Request: %s", string(reqDetails)))
 	resp, err := client.Do(req)
 	if err != nil {
 		utils.Log("error", err.Error())
@@ -54,34 +73,36 @@ func New(server string, username string, password string) (*PowerMax, error) {
 	}
 	defer resp.Body.Close()
 
+	respDetails, _ := httputil.DumpResponse(resp, true)
+	fmt.Printf("%s", string(respDetails))
+
 	if resp.StatusCode != 200 {
-		message := fmt.Sprintf("Login %s with %s/%s failed.", server, username, password)
+		message := fmt.Sprintf("Fail to query symmtric with symmid %s", symmid)
 		utils.Log("error", message)
 		respDetails, _ := httputil.DumpResponse(resp, true)
-		utils.Log("debug", fmt.Sprintf("Login Response: %s", string(respDetails)))
+		utils.Log("debug", fmt.Sprintf("Query Symmtric Response: %s", string(respDetails)))
 		return nil, errors.New(message)
 	}
-
-	token := resp.Header.Get("Emc-Csrf-Token")
 
 	return &PowerMax{
 		server:   server,
 		username: username,
 		password: password,
-		token:    token,
+		port:     port,
+		symmid:   symmid,
 		client:   client,
 	}, nil
 }
 
 // Request Send get/post/delete request
-func (pmax *PowerMax) Request(method string, URI string, fields string, filter string, payload interface{}, result interface{}) error {
-	requestParams := fmt.Sprintf("method: %s, URI: %s, fields: %s, filter: %s, payload: %#v", method, URI, fields, filter, payload)
+func (pmax *PowerMax) Request(method string, URI string, payload interface{}, result interface{}) error {
+	requestParams := fmt.Sprintf("method: %s, URI: %s, payload: %#v", method, URI, payload)
 	utils.Log("debug", requestParams)
 	if method == "" || URI == "" {
 		return errors.New("method, or URI is missed")
 	}
 
-	url := utils.URL("https", pmax.server, URI)
+	url := utils.URL("https", pmax.server, pmax.port, URI)
 
 	var req *http.Request
 	if payload != nil {
@@ -90,25 +111,7 @@ func (pmax *PowerMax) Request(method string, URI string, fields string, filter s
 	} else {
 		req, _ = http.NewRequest(method, url, nil)
 	}
-
-	if method == "POST" || method == "DELETE" {
-		req.Header.Set("EMC-CSRF-TOKEN", pmax.token)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-EMC-REST-CLIENT", "true")
-
-	params := req.URL.Query()
-	if method != "DELETE" {
-		params.Add("compact", "true")
-	}
-	if fields != "" {
-		params.Add("fields", fields)
-	}
-	if filter != "" {
-		params.Add("filter", filter)
-	}
-	req.URL.RawQuery = params.Encode()
+	populateCommonHeaders(req)
 
 	reqDetails, _ := httputil.DumpRequest(req, true)
 	utils.Log("debug", fmt.Sprintf("Request: %s", string(reqDetails)))
@@ -136,11 +139,4 @@ func (pmax *PowerMax) Request(method string, URI string, fields string, filter s
 	}
 	utils.Log("error", "Fail to perform the request")
 	return fmt.Errorf("Request Fails: %s", requestParams)
-}
-
-// Destroy logout PowerMax
-func (pmax *PowerMax) Destroy() error {
-	utils.Log("debug", "Logout")
-	err := pmax.Request("POST", "/api/types/loginSessionInfo/action/logout", "", "", nil, nil)
-	return err
 }
