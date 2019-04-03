@@ -1,4 +1,4 @@
-package unity
+package pmax
 
 import (
 	"bytes"
@@ -14,8 +14,8 @@ import (
 	"github.com/kckecheng/storagemetric/utils"
 )
 
-// Unity Unity array object
-type Unity struct {
+// PowerMax PowerMax array object
+type PowerMax struct {
 	server   string
 	username string
 	password string
@@ -23,8 +23,8 @@ type Unity struct {
 	client   http.Client
 }
 
-// New Init Unity Object
-func New(server string, username string, password string) (*Unity, error) {
+// New Init PowerMax Object
+func New(server string, username string, password string) (*PowerMax, error) {
 	if utils.Logger == nil {
 		utils.InitLogger("", "")
 	}
@@ -32,7 +32,7 @@ func New(server string, username string, password string) (*Unity, error) {
 	var err error
 	utils.Log("debug", fmt.Sprintf("server: %s, username: %s, password: %s", server, username, password))
 	if server == "" || username == "" || password == "" {
-		return nil, errors.New("Unity server address, username, and password must be specified")
+		return nil, errors.New("PowerMax server address, username, and password must be specified")
 	}
 
 	cookieJar, _ := cookiejar.New(nil)
@@ -64,7 +64,7 @@ func New(server string, username string, password string) (*Unity, error) {
 
 	token := resp.Header.Get("Emc-Csrf-Token")
 
-	return &Unity{
+	return &PowerMax{
 		server:   server,
 		username: username,
 		password: password,
@@ -74,14 +74,14 @@ func New(server string, username string, password string) (*Unity, error) {
 }
 
 // Request Send get/post/delete request
-func (unity *Unity) Request(method string, URI string, fields string, filter string, payload interface{}, result interface{}) error {
+func (pmax *PowerMax) Request(method string, URI string, fields string, filter string, payload interface{}, result interface{}) error {
 	requestParams := fmt.Sprintf("method: %s, URI: %s, fields: %s, filter: %s, payload: %#v", method, URI, fields, filter, payload)
 	utils.Log("debug", requestParams)
 	if method == "" || URI == "" {
 		return errors.New("method, or URI is missed")
 	}
 
-	url := utils.URL("https", unity.server, URI)
+	url := utils.URL("https", pmax.server, URI)
 
 	var req *http.Request
 	if payload != nil {
@@ -92,7 +92,7 @@ func (unity *Unity) Request(method string, URI string, fields string, filter str
 	}
 
 	if method == "POST" || method == "DELETE" {
-		req.Header.Set("EMC-CSRF-TOKEN", unity.token)
+		req.Header.Set("EMC-CSRF-TOKEN", pmax.token)
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
@@ -113,7 +113,7 @@ func (unity *Unity) Request(method string, URI string, fields string, filter str
 	reqDetails, _ := httputil.DumpRequest(req, true)
 	utils.Log("debug", fmt.Sprintf("Request: %s", string(reqDetails)))
 
-	resp, err := unity.client.Do(req)
+	resp, err := pmax.client.Do(req)
 	if err != nil {
 		utils.Log("error", err.Error())
 		return err
@@ -138,9 +138,9 @@ func (unity *Unity) Request(method string, URI string, fields string, filter str
 	return fmt.Errorf("Request Fails: %s", requestParams)
 }
 
-// Destroy logout Unity
-func (unity *Unity) Destroy() error {
+// Destroy logout PowerMax
+func (pmax *PowerMax) Destroy() error {
 	utils.Log("debug", "Logout")
-	err := unity.Request("POST", "/api/types/loginSessionInfo/action/logout", "", "", nil, nil)
+	err := pmax.Request("POST", "/api/types/loginSessionInfo/action/logout", "", "", nil, nil)
 	return err
 }

@@ -11,10 +11,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//Logger global log object
+// Logger global log object
 var Logger *log.Logger
 
-//PrettyPrint Print json to console elegantly, which is helpful for degbugging
+// PrettyPrint Print json to console elegantly, which is helpful for degbugging
 func PrettyPrint(data interface{}, pre string, post string) {
 	dataJSON, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
@@ -30,7 +30,7 @@ func PrettyPrint(data interface{}, pre string, post string) {
 	}
 }
 
-//GetLoginOptions Get login information
+// GetLoginOptions Get login information
 func GetLoginOptions() (string, string, string, error) {
 	var server, username, password string
 	flag.StringVar(&server, "server", "", "Server address")
@@ -45,8 +45,25 @@ func GetLoginOptions() (string, string, string, error) {
 	return server, username, password, nil
 }
 
-//GetLogLevel Get the log level based on input string
-//Valid string: panic fatal error warning info debug trace
+//  URL Compose a URL based on protocol, server address, URI, etc.
+func URL(proto string, fqdn string, uri ...string) string {
+	var url string
+
+	if proto == "" {
+		url = fqdn
+	} else {
+		url = proto + "://"
+	}
+
+	for _, uri := range uri {
+		url += uri
+	}
+
+	return url
+}
+
+// GetLogLevel Get the log level based on input string
+// Valid string: panic fatal error warning info debug trace
 func GetLogLevel(logStr string) log.Level {
 	level, err := log.ParseLevel(logStr)
 	if err != nil {
@@ -55,7 +72,7 @@ func GetLogLevel(logStr string) log.Level {
 	return level
 }
 
-//InitLogger Init global log object
+// InitLogger Init global log object
 func InitLogger(filename string, levelStr string) {
 	var defaultLogFile = "storagemetric.log"
 	var level log.Level
@@ -86,7 +103,7 @@ func InitLogger(filename string, levelStr string) {
 	Logger = logger
 }
 
-//Log log message based on log level
+// Log log message based on log level
 func Log(levelStr string, message string) {
 	level := GetLogLevel(levelStr)
 	switch level {
