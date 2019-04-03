@@ -41,7 +41,7 @@ func New(server string, username string, password string) (*Unity, error) {
 	}
 	client := http.Client{Transport: tr, Jar: cookieJar}
 
-	req, err := http.NewRequest("GET", utils.URL("https", server, "/api/types/loginSessionInfo/instances"), nil)
+	req, err := http.NewRequest("GET", utils.URL("https", server, "", "/api/types/loginSessionInfo/instances"), nil)
 	req.SetBasicAuth(username, password)
 	req.Header.Set("X-EMC-REST-CLIENT", "true")
 
@@ -81,7 +81,7 @@ func (unity *Unity) Request(method string, URI string, fields string, filter str
 		return errors.New("method, or URI is missed")
 	}
 
-	url := utils.URL("https", unity.server, URI)
+	url := utils.URL("https", unity.server, "", URI)
 
 	var req *http.Request
 	if payload != nil {

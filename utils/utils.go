@@ -46,13 +46,17 @@ func GetLoginOptions() (string, string, string, error) {
 }
 
 //  URL Compose a URL based on protocol, server address, URI, etc.
-func URL(proto string, fqdn string, uri ...string) string {
+func URL(proto string, fqdn string, port string, uri ...string) string {
 	var url string
 
 	if proto == "" {
 		url = fqdn
 	} else {
-		url = proto + "://"
+		url = proto + "://" + fqdn
+	}
+
+	if port != "" {
+		url += ":" + port
 	}
 
 	for _, uri := range uri {
