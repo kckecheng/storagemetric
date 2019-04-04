@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httputil"
+	"time"
 
 	"github.com/kckecheng/storagemetric/utils"
 )
@@ -22,6 +23,22 @@ type PowerMax struct {
 	password string
 	symmid   string
 	client   http.Client
+}
+
+// Covert UTC timestamp(millisecond) to date
+func timestampToDate(ms int64) time.Time {
+	tm := time.Unix(ms/1000, 0)
+	return tm
+}
+
+// Convert date to UTC timestamp(millisecond)
+func dateToTimestamp(tm time.Time) int64 {
+	return tm.Unix() * 1000
+}
+
+// Get current UTC timestamp
+func currentTimestamp() int64 {
+	return time.Now().Unix() * 1000
 }
 
 // Add common headers
@@ -73,9 +90,6 @@ func New(server string, port string, username string, password string, symmid st
 	}
 	defer resp.Body.Close()
 
-	respDetails, _ := httputil.DumpResponse(resp, true)
-	fmt.Printf("%s", string(respDetails))
-
 	if resp.StatusCode != 200 {
 		message := fmt.Sprintf("Fail to query symmtric with symmid %s", symmid)
 		utils.Log("error", message)
@@ -111,6 +125,7 @@ func (pmax *PowerMax) Request(method string, URI string, payload interface{}, re
 	} else {
 		req, _ = http.NewRequest(method, url, nil)
 	}
+	req.SetBasicAuth(pmax.username, pmax.password)
 	populateCommonHeaders(req)
 
 	reqDetails, _ := httputil.DumpRequest(req, true)

@@ -101,9 +101,9 @@ func InitLogger(filename string, levelStr string) {
 	}
 	logger.SetLevel(level)
 
-	if level == log.DebugLevel {
-		logger.SetReportCaller(true)
-	}
+	// if level == log.DebugLevel {
+	//   logger.SetReportCaller(true)
+	// }
 	Logger = logger
 }
 
