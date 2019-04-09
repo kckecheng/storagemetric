@@ -50,3 +50,25 @@ func (pmax *PowerMax) GetDirPorts(dir string) []string {
 
 	return ports
 }
+
+func (pmax *PowerMax) GetStorageGroups() []string {
+	var sgs []string
+
+	payload := struct {
+		SymmetrixId string `json:"symmetrixId"`
+	}{pmax.symmid}
+
+	sgroups := struct {
+		StorageGroupInfo []struct {
+			StorageGroupId     string `json:"storageGroupId"`
+			FirstAvailableDate int64  `json:"firstAvailableDate"`
+			LastAvailableDate  int64  `json:"lastAvailableDate"`
+		} `json:"storageGroupInfo"`
+	}{}
+	pmax.Request("POST", "/univmax/restapi/performance/StorageGroup/keys", payload, &sgroups)
+	for _, sg := range sgroups.StorageGroupInfo {
+		sgs = append(sgs, sg.StorageGroupId)
+	}
+
+	return sgs
+}

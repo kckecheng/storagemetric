@@ -15,4 +15,7 @@ func main() {
 
 	ports := pmax.GetDirPorts("FA-1D")
 	utils.PrettyPrint(ports, "", "")
+
+	sgs := pmax.GetStorageGroups()
+	utils.PrettyPrint(sgs, "", "")
 }
