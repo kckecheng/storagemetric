@@ -23,7 +23,11 @@ func main() {
 	current_tm := time.Now()
 	from_tm := current_tm.Add(-time.Second * 360)
 
-	var metric powermax.StorageGroupMetric
-	metric = pmax.GetStorageGroupMetrics("vmw-automation-ci", from_tm, current_tm)
-	utils.PrettyPrint(metric, "", "")
+	var sgmetric powermax.StorageGroupMetric
+	sgmetric = pmax.GetStorageGroupMetric("vmw-automation-ci", from_tm, current_tm)
+	utils.PrettyPrint(sgmetric, "", "")
+
+	var arrmetric powermax.ArrayMetric
+	arrmetric = pmax.GetArrayMetric(from_tm, current_tm)
+	utils.PrettyPrint(arrmetric, "", "")
 }
