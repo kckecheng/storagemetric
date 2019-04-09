@@ -1,9 +1,24 @@
 package powermax
 
 import (
-// "fmt"
-// "github.com/kckecheng/storagemetric/utils"
+	"time"
+	// "fmt"
+	// "github.com/kckecheng/storagemetric/utils"
 )
+
+type StorageGroupMetric struct {
+	HostReads         float64 `json:"HostReads"`
+	HostWrites        float64 `json:"HostWrites"`
+	HostMBReads       float64 `json:"HostMBReads"`
+	HostMBWritten     float64 `json:"HostMBWritten"`
+	ReadResponseTime  float64 `json:"ReadResponseTime"`
+	WriteResponseTime float64 `json:"WriteResponseTime"`
+	ResponseTime      float64 `json:"ResponseTime"`
+	AvgIOSize         float64 `json:"AvgIOSize"`
+	AvgReadSize       float64 `json:"AvgReadSize"`
+	AvgWriteSize      float64 `json:"AvgWriteSize"`
+	Timestamp         int64   `json:"timestamp"`
+}
 
 // GetFEDirectors List available FE directors
 func (pmax *PowerMax) GetFEDirectors() []string {
@@ -71,4 +86,42 @@ func (pmax *PowerMax) GetStorageGroups() []string {
 	}
 
 	return sgs
+}
+
+func (pmax *PowerMax) GetStorageGroupMetrics(sg string, from time.Time, to time.Time) StorageGroupMetric {
+	payload := struct {
+		SymmetrixId    string   `json:"symmetrixId"`
+		StorageGroupId string   `json:"storageGroupId"`
+		DataFormat     string   `json:"dataFormat"`
+		StartDate      int64    `json:"startDate"`
+		EndDate        int64    `json:"endDate"`
+		Metrics        []string `json:"metrics"`
+	}{
+		pmax.symmid,
+		sg,
+		"Average",
+		dateToTimestamp(from),
+		dateToTimestamp(to),
+		[]string{"HostReads", "HostWrites", "HostMBReads", "HostMBWritten", "ResponseTime", "ReadResponseTime", "WriteResponseTime", "AvgIOSize", "AvgReadSize", "AvgWriteSize"},
+	}
+	result := struct {
+		ResultList struct {
+			Result []StorageGroupMetric `json:"result"`
+			From   int64                `json:"from"`
+			To     int64                `json:"to"`
+		} `json:"resultList"`
+		Id             string `json:"id"`
+		Count          int64  `json:"count"`
+		ExpirationTime int64  `json:"expirationTime"`
+		MaxPageSize    int64  `json:"maxPageSize"`
+		WarningMessage string `json:"warningMessage"`
+	}{}
+	pmax.Request("POST", "/univmax/restapi/performance/StorageGroup/metrics", payload, &result)
+
+	metrics := result.ResultList.Result
+	// Only return the latest result if exists
+	if len(metrics) == 0 {
+		return StorageGroupMetric{}
+	}
+	return metrics[len(metrics)-1]
 }

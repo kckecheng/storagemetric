@@ -4,6 +4,7 @@ import (
 	// "fmt"
 	"github.com/kckecheng/storagemetric/dell/emc/powermax"
 	"github.com/kckecheng/storagemetric/utils"
+	"time"
 )
 
 func main() {
@@ -18,4 +19,11 @@ func main() {
 
 	sgs := pmax.GetStorageGroups()
 	utils.PrettyPrint(sgs, "", "")
+
+	current_tm := time.Now()
+	from_tm := current_tm.Add(-time.Second * 360)
+
+	var metric powermax.StorageGroupMetric
+	metric = pmax.GetStorageGroupMetrics("vmw-automation-ci", from_tm, current_tm)
+	utils.PrettyPrint(metric, "", "")
 }
