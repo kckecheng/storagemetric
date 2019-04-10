@@ -41,6 +41,7 @@ func InitHttpRequest(method string, url string, payload interface{}) (*http.Requ
 
 func UpdateHttpRequestHeaders(req *http.Request, headers map[string]string) {
 	for k, v := range headers {
+		Log("debug", fmt.Sprintf("Update header: %s -> %s", k, v))
 		req.Header.Set(k, v)
 	}
 }
@@ -48,6 +49,7 @@ func UpdateHttpRequestHeaders(req *http.Request, headers map[string]string) {
 func UpdateHttpRequestParams(req *http.Request, pairs map[string]string) {
 	params := req.URL.Query()
 	for k, v := range pairs {
+		Log("debug", fmt.Sprintf("Update query parameters: %s -> %s", k, v))
 		params.Add(k, v)
 	}
 	req.URL.RawQuery = params.Encode()
@@ -55,11 +57,11 @@ func UpdateHttpRequestParams(req *http.Request, pairs map[string]string) {
 
 func DoHttpRequest(client *http.Client, req *http.Request) (*http.Response, error) {
 	reqDetails, _ := httputil.DumpRequest(req, true)
-	Log("debug", fmt.Sprintf("Request: %s", string(reqDetails)))
+	Log("debug", fmt.Sprintf("Request Details:\n%s", string(reqDetails)))
 
 	resp, err := client.Do(req)
 	respDetails, _ := httputil.DumpResponse(resp, true)
-	Log("debug", string(respDetails))
+	Log("debug", fmt.Sprintf("Response Details:\n%s", string(respDetails)))
 	return resp, err
 }
 
@@ -69,9 +71,14 @@ func GetHttpResponseJson(resp *http.Response, result interface{}) error {
 	defer resp.Body.Close()
 	respRaw, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		Log("error", fmt.Sprintf("Fail to read response body due to %s", err.Error()))
 		return err
 	}
 
 	err = json.Unmarshal(respRaw, result)
-	return err
+	if err != nil {
+		Log("error", fmt.Sprintf("Fail to decode json from response body due to %s", err.Error()))
+		return err
+	}
+	return nil
 }

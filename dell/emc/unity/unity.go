@@ -31,34 +31,25 @@ func New(server string, username string, password string) (*Unity, error) {
 
 	var err error
 	utils.Log("debug", fmt.Sprintf("server: %s, username: %s, password: %s", server, username, password))
-	if server == "" || username == "" || password == "" {
-		return nil, errors.New("Unity server address, username, and password must be specified")
+	if utils.EmptyStrExists(server, username, password) == true {
+		return nil, errors.New("Unity server address, username, and password must all be specified")
 	}
 
-	cookieJar, _ := cookiejar.New(nil)
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := http.Client{Transport: tr, Jar: cookieJar}
+	client := utils.InitHttpClient()
 
-	req, err := http.NewRequest("GET", utils.URL("https", server, "", "/api/types/loginSessionInfo/instances"), nil)
+	req, err := utils.InitHttpRequest("GET", utils.URL("https", server, "", "/api/types/loginSessionInfo/instances"), nil)
 	req.SetBasicAuth(username, password)
 	req.Header.Set("X-EMC-REST-CLIENT", "true")
 
-	reqDetails, _ := httputil.DumpRequest(req, true)
-	utils.Log("debug", fmt.Sprintf("Login Request: %s", string(reqDetails)))
-	resp, err := client.Do(req)
+	resp, err := utils.DoHttpRequest(&client, req)
 	if err != nil {
 		utils.Log("error", err.Error())
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		message := fmt.Sprintf("Login %s with %s/%s failed.", server, username, password)
 		utils.Log("error", message)
-		respDetails, _ := httputil.DumpResponse(resp, true)
-		utils.Log("debug", fmt.Sprintf("Login Response: %s", string(respDetails)))
 		return nil, errors.New(message)
 	}
 
@@ -77,65 +68,45 @@ func New(server string, username string, password string) (*Unity, error) {
 func (unity *Unity) Request(method string, URI string, fields string, filter string, payload interface{}, result interface{}) error {
 	requestParams := fmt.Sprintf("method: %s, URI: %s, fields: %s, filter: %s, payload: %#v", method, URI, fields, filter, payload)
 	utils.Log("debug", requestParams)
-	if method == "" || URI == "" {
+	if utils.EmptyStrExists(method, URI) == true {
 		return errors.New("method, or URI is missed")
 	}
 
 	url := utils.URL("https", unity.server, "", URI)
+	req, err := utils.InitHttpRequest(method, url, payload)
 
-	var req *http.Request
-	if payload != nil {
-		payloadJSON, _ := json.Marshal(payload)
-		req, _ = http.NewRequest(method, url, bytes.NewBuffer(payloadJSON))
-	} else {
-		req, _ = http.NewRequest(method, url, nil)
-	}
-
+	// Add token in header if POST/DELETE
 	if method == "POST" || method == "DELETE" {
 		req.Header.Set("EMC-CSRF-TOKEN", unity.token)
 	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-EMC-REST-CLIENT", "true")
 
-	params := req.URL.Query()
+	commonHeaders := map[string]string{
+		"Accept":            "application/json",
+		"Content-Type":      "application/json",
+		"X-EMC-REST-CLIENT": "true",
+	}
+	utils.UpdateHttpRequestHeaders(req, commonHeaders)
+
 	if method != "DELETE" {
-		params.Add("compact", "true")
+		utils.UpdateHttpRequestParams(req, map[string]string{"compact": "true"})
 	}
 	if fields != "" {
-		params.Add("fields", fields)
+		utils.UpdateHttpRequestParams(req, map[string]string{"fields": fields})
 	}
 	if filter != "" {
-		params.Add("filter", filter)
+		utils.UpdateHttpRequestParams(req, map[string]string{"filter": filter})
 	}
-	req.URL.RawQuery = params.Encode()
 
-	reqDetails, _ := httputil.DumpRequest(req, true)
-	utils.Log("debug", fmt.Sprintf("Request: %s", string(reqDetails)))
-
-	resp, err := unity.client.Do(req)
+	resp, err := utils.DoHttpRequest(&unity.client, req)
 	if err != nil {
 		utils.Log("error", err.Error())
 		return err
 	}
-	defer resp.Body.Close()
 
-	respDetails, _ := httputil.DumpResponse(resp, true)
-	utils.Log("debug", string(respDetails))
 	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-		respRaw, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-
-		if result != nil {
-			json.Unmarshal(respRaw, result)
-		}
-
-		return nil
+		err := utils.GetHttpResponseJson(resp, result)
+		return err
 	}
-	utils.Log("error", "Fail to perform the request")
-	return fmt.Errorf("Request Fails: %s", requestParams)
 }
 
 // Destroy logout Unity
