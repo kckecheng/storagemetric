@@ -107,6 +107,7 @@ func (unity *Unity) Request(method string, URI string, fields string, filter str
 		err := utils.GetHttpResponseJson(resp, result)
 		return err
 	}
+	return errors.New("Invalid status code")
 }
 
 // Destroy logout Unity

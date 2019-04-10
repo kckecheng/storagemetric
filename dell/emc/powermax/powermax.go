@@ -1,15 +1,9 @@
 package powermax
 
 import (
-	"bytes"
-	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"net/http/cookiejar"
-	"net/http/httputil"
 	"time"
 
 	"github.com/kckecheng/storagemetric/utils"
@@ -70,7 +64,7 @@ func New(server string, port string, username string, password string, symmid st
 	req.SetBasicAuth(username, password)
 	populateCommonHeaders(req)
 
-	utils.DoHttpRequest(&client, req)
+	resp, err := utils.DoHttpRequest(&client, req)
 	if err != nil {
 		utils.Log("error", err.Error())
 		return nil, err
@@ -116,4 +110,5 @@ func (pmax *PowerMax) Request(method string, URI string, payload interface{}, re
 		err := utils.GetHttpResponseJson(resp, result)
 		return err
 	}
+	return errors.New("Invalid status code")
 }
