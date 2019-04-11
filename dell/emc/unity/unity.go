@@ -97,10 +97,15 @@ func (unity *Unity) Request(method string, URI string, fields string, filter str
 	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-		err := utils.GetHttpResponseJson(resp, result)
-		return err
+		// Care about the response content
+		if result != nil {
+			err := utils.GetHttpResponseJson(resp, result)
+			return err
+		}
+		// Do not need to capture the response
+		return nil
 	}
-	return errors.New("Invalid status code")
+	return errors.New(fmt.Sprintf("Failed request with status code %d", resp.StatusCode))
 }
 
 // Destroy logout Unity
