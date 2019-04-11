@@ -1,17 +1,10 @@
 package unity
 
 import (
-	"bytes"
-	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/http/cookiejar"
-	"net/http/httputil"
-
 	"github.com/kckecheng/storagemetric/utils"
+	"net/http"
 )
 
 // Unity Unity array object
