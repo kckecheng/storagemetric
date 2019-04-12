@@ -169,9 +169,37 @@ func (pmax *PowerMax) GetArrayMetric(from time.Time, to time.Time) ArrayMetric {
 	pmax.Request("POST", "/univmax/restapi/performance/Array/metrics", payload, &result)
 
 	metrics := result.ResultList.Result
-	// Only return the latest result if exists
-	if len(metrics) == 0 {
-		return ArrayMetric{}
+
+	// Calculate an average as return
+	var avgMetric ArrayMetric
+	mn := len(metrics)
+	for _, metric := range metrics {
+		avgMetric.HostIOs += metric.HostIOs
+		avgMetric.HostReads += metric.HostReads
+		avgMetric.HostWrites += metric.HostWrites
+		avgMetric.HostMBReads += metric.HostMBReads
+		avgMetric.HostMBWritten += metric.HostMBWritten
+		avgMetric.FEReadReqs += metric.FEReadReqs
+		avgMetric.FEWriteReqs += metric.FEWriteReqs
+		avgMetric.ReadResponseTime += metric.ReadResponseTime
+		avgMetric.WriteResponseTime += metric.WriteResponseTime
+		avgMetric.FEUtilization += metric.FEUtilization
+		// Grab the latest timestamp if exists
+		if avgMetric.Timestamp < metric.Timestamp {
+			avgMetric.Timestamp += metric.Timestamp
+		}
 	}
-	return metrics[len(metrics)-1]
+	if mn != 0 {
+		avgMetric.HostIOs = avgMetric.HostIOs / float64(mn)
+		avgMetric.HostReads = avgMetric.HostReads / float64(mn)
+		avgMetric.HostWrites = avgMetric.HostWrites / float64(mn)
+		avgMetric.HostMBReads = avgMetric.HostMBReads / float64(mn)
+		avgMetric.HostMBWritten = avgMetric.HostMBWritten / float64(mn)
+		avgMetric.FEReadReqs = avgMetric.FEReadReqs / float64(mn)
+		avgMetric.FEWriteReqs = avgMetric.FEWriteReqs / float64(mn)
+		avgMetric.ReadResponseTime = avgMetric.ReadResponseTime / float64(mn)
+		avgMetric.WriteResponseTime = avgMetric.WriteResponseTime / float64(mn)
+		avgMetric.FEUtilization = avgMetric.FEUtilization / float64(mn)
+	}
+	return avgMetric
 }
